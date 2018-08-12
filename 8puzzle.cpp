@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
 		printState(moves[i]);
 	*/
 
-	vector<string> result = solve_dfs(init_state, moveGen, goalTest);
+	vector<string> result = dfs(init_state, moveGen, goalTest);
 	if(result.empty())
 		cout<<"Failed!\n";
 	else {
