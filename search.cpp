@@ -1,9 +1,12 @@
 #include "search.h"
+#include <iostream>
 
 struct SearchNode{
 	string state;
 	SearchNode *parent;
 	long depth;
+	bool open;
+	bool closed;
 };
 
 SearchNode *makeNode(string state, SearchNode *parent = NULL) {
@@ -11,18 +14,30 @@ SearchNode *makeNode(string state, SearchNode *parent = NULL) {
 	SearchNode *pNode = new SearchNode;
 	pNode->state = state;
 	pNode->parent = parent;
+	pNode->open = false;
+	pNode->closed = false;
 	if(parent != NULL) 
-		pNode->depth = parent->depth;
+		pNode->depth = parent->depth+1;
 	else pNode->depth = 0;
 
 	return pNode;
 }
 
-void cleanUp(unordered_map<string, SearchNode *> &nodes) {
+void freeMem(unordered_map<string, SearchNode *> &nodes) {
 	/* Frees memory assigned to all nodes */
 	auto it = nodes.begin();
 	while(it != nodes.end()) {
 		delete (*it).second;
+		it++;
+	}
+}
+
+void resetStatus(unordered_map<string, SearchNode *> &nodes) {
+	/* Resets open/closed status of all nodes */
+	auto it = nodes.begin();
+	while(it != nodes.end()) {
+		(*it).second->open = false;
+		(*it).second->closed = false;
 		it++;
 	}
 }
@@ -52,10 +67,11 @@ bool (*goalTest)(string)) {
 	 */
 	 vector<string> result;			// stores the resulting path
 	 list<SearchNode *> openList;	// keeps track of order of insertions
-	 unordered_map<string, SearchNode *> nodes;	  // indexes all nodes
+	 unordered_map<string, SearchNode *> nodes;	  // indexes and stores graph
 	 
 	 /* Add initial state to open and index it */
 	 SearchNode *pInit = makeNode(init);
+	 pInit->open = true;
 	 openList.push_back(pInit);
 	 nodes[init] = pInit;
 
@@ -63,11 +79,13 @@ bool (*goalTest)(string)) {
 		/* Pop a node from the front of the open list */
 		SearchNode *N = openList.front();
 		openList.pop_front();
+		N->open = false;
+		N->closed = true;
 		
 		/* Check if current node is the goal state */
 		if(goalTest(N->state)) {
 			result = reconstruct(N, nodes);
-			cleanUp(nodes);			// free up space assigned to nodes
+			freeMem(nodes);			// free up space assigned to nodes
 			return result;
 		}
 		else {
@@ -77,13 +95,20 @@ bool (*goalTest)(string)) {
 				string mv = newMoves[i];
 				if(nodes.count(mv) == 0) {
 					SearchNode *pNode = makeNode(mv, N);
+					pNode->open = true;
 					openList.push_back(pNode);
 					nodes[mv] = pNode;
+				}
+				else if(!(nodes[mv]->open) && !(nodes[mv]->closed)) {
+					/* This segment is unnecessary here, but I am including
+					 * it for uniformity */
+					nodes[mv]->open = true;
+					openList.push_back(nodes[mv]);
 				}
 			}
 		}
 	 }
-	 cleanUp(nodes);
+	 freeMem(nodes);
 	 return result;		// Using an empty vector to indicate failure
 }
 
@@ -94,10 +119,11 @@ bool (*goalTest)(string)) {
 	 */
 	 vector<string> result;			// stores the resulting path
 	 list<SearchNode *> openList;	// keeps track of order of insertions
-	 unordered_map<string, SearchNode *> nodes;	  // indexes all nodes
+	 unordered_map<string, SearchNode *> nodes;	  // indexes and stores graph
 	 
 	 /* Add initial state to open and index it */
 	 SearchNode *pInit = makeNode(init);
+	 pInit->open = true;
 	 openList.push_back(pInit);
 	 nodes[init] = pInit;
 
@@ -105,11 +131,13 @@ bool (*goalTest)(string)) {
 		/* Pop a node from the back of the open list */
 		SearchNode *N = openList.back();
 		openList.pop_back();
+		N->open = false;
+		N->closed = true;
 		
 		/* Check if current node is the goal state */
 		if(goalTest(N->state)) {
 			result = reconstruct(N, nodes);
-			cleanUp(nodes);			// free up space assigned to nodes
+			freeMem(nodes);			// free up space assigned to nodes
 			return result;
 		}
 		else {
@@ -119,12 +147,81 @@ bool (*goalTest)(string)) {
 				string mv = newMoves[i];
 				if(nodes.count(mv) == 0) {
 					SearchNode *pNode = makeNode(mv, N);
+					pNode->open = true;
 					openList.push_back(pNode);
 					nodes[mv] = pNode;
+				}
+				else if(!(nodes[mv]->open) && !(nodes[mv]->closed)) {
+					nodes[mv]->open = true;
+					openList.push_back(nodes[mv]);
 				}
 			}
 		}
 	 }
-	 cleanUp(nodes);
+	 freeMem(nodes);
 	 return result;		// Using an empty vector to indicate failure
+}
+
+vector<string> dfid(string init, vector<string> (*moveGen)(string),
+bool (*goalTest)(string)) {	
+	/* Search using Depth First Iterative Deepening(DFID) */
+	vector<string> result;			// stores the resulting path
+	list<SearchNode *> openList;	// keeps track of order of insertion
+	unordered_map<string, SearchNode *> nodes;	  // indexes and stores graph
+
+	long max_depth = 0;
+
+	/* Add initial state to known graph beforehand */
+	SearchNode *pInit = makeNode(init);
+	nodes[init] = pInit;
+
+	while(true) {
+		long depth_explored = 0;	// actual depth explored 
+
+		/* reset status of previously stored nodes */
+		resetStatus(nodes);
+
+		/* Add initial state to open and index it */
+		nodes[init]->open = true;
+		openList.push_back(nodes[init]);
+
+		while(!openList.empty()) {
+			/* Pop a node from the back of the open list */
+			SearchNode *N = openList.back();
+			openList.pop_back();
+			N->open = false;
+			N->closed = true;
+
+			if(N->depth > depth_explored)
+				depth_explored = N->depth; 
+			/* Check if current node is the goal state */
+			if(goalTest(N->state)) {
+				result = reconstruct(N, nodes);
+				freeMem(nodes);			// free up space assigned to nodes
+				return result;
+			}
+			else if(N->depth < max_depth) {
+				/* Else, generate new moves and add them to open list */
+				/* if the new nodes are not too deep */
+				vector<string> newMoves = moveGen(N->state);
+				for(unsigned i = 0; i<newMoves.size(); i++) {
+					string mv = newMoves[i];
+					if(nodes.count(mv) == 0) { 
+						SearchNode *pNode = makeNode(mv, N);
+						pNode->open = true;
+						openList.push_back(pNode);
+						nodes[mv] = pNode;
+					}
+					else if(!(nodes[mv]->open) && !(nodes[mv]->closed)) {
+						nodes[mv]->open = true;
+						openList.push_back(nodes[mv]);
+					}
+				}
+			}
+		}
+		if(depth_explored < max_depth) break;
+		max_depth++;
+	}
+	freeMem(nodes);
+	return result;		// Using an empty vector to indicate failure
 }
