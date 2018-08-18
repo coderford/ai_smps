@@ -1,9 +1,9 @@
-/* Solving the sliding 8 puzzle using BFS and DFS:
+/* Solving the sliding 8 puzzle using search algorithms
  *
- *		|3 _ 5|							|1 2 3|
- *		|1 6 4|			 --> 			|4 5 6|
- *		|8 2 7|							|7 8 _|
- *	 initial state					   goal state
+ *   |3 _ 5|                            |1 2 3|
+ *   |1 6 4|             -->            |4 5 6|
+ *   |8 2 7|                            |7 8 _|
+ * initial state                       goal state
  *
  * the above initial state is represented as the string "3_5164827"
  *///////////////////////////////////////////////////////////////////
@@ -20,17 +20,29 @@ void printState(string state);
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
-		cout<<"Usage: 8puzzle <initial state>\n";
+		cout<<"Usage: 8puzzle INITIAL_STATE [ALGORITHM]\n";
 		return 0;
 	}
-	string init_state = argv[1];
-	/* Move generation test:
-	vector<string> moves = moveGen(init_state);
-	for(unsigned i = 0; i<moves.size(); i++)
-		printState(moves[i]);
-	*/
 
-	vector<string> result = dfs(init_state, moveGen, goalTest);
+	string init_state = argv[1];
+	vector<string> result;
+
+	if(argc < 3)
+		result = dfs(init_state, moveGen, goalTest);
+	else {
+		string algo = argv[2];
+		if(algo == "dfs") 
+			result = dfs(init_state, moveGen, goalTest);
+		else if(algo == "bfs")
+			result = bfs(init_state, moveGen, goalTest);
+		else if(algo == "dfid")
+			result = dfid(init_state, moveGen, goalTest);
+		else {
+			cout<<"ERROR: Unknown algorithm!\n";
+			return 1;
+		}
+	}
+
 	if(result.empty())
 		cout<<"Failed!\n";
 	else {
