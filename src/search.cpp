@@ -60,7 +60,8 @@ unordered_map<string, SearchNode *> &nodes) {
 
 vector<string> bfs(string init, vector<string> (*moveGen)(string),
 bool (*goalTest)(string)) {	
-	/* Breadth First Search goal node based on goalTest and moveGen and 
+	/*
+	 * Breadth First Search goal node based on goalTest and moveGen and 
 	 * return a vector of states with the path to the goal node. Strings
 	 * are used for state representation because they are hashable and can
 	 * be converted to other representations as required.
@@ -114,21 +115,22 @@ bool (*goalTest)(string)) {
 
 vector<string> dfs(string init, vector<string> (*moveGen)(string),
 bool (*goalTest)(string)) {	
-	/* Depth First Search goal node based on goalTest and moveGen and 
+	/*
+	 * Depth First Search goal node based on goalTest and moveGen and 
 	 * return a vector of states with the path to the goal node.
 	 */
 	 vector<string> result;			// stores the resulting path
 	 list<SearchNode *> openList;	// keeps track of order of insertions
 	 unordered_map<string, SearchNode *> nodes;	  // indexes and stores graph
 	 
-	 /* Add initial state to open and index it */
-	 SearchNode *pInit = makeNode(init);
-	 pInit->open = true;
-	 openList.push_back(pInit);
-	 nodes[init] = pInit;
+	 /* add initial state to open and index it */
+	 SearchNode *pinit = makeNode(init);
+	 pinit->open = true;
+	 openList.push_back(pinit);
+	 nodes[init] = pinit;
 
 	 while(!openList.empty()) {
-		/* Pop a node from the back of the open list */
+		/* pop a node from the back of the open list */
 		SearchNode *N = openList.back();
 		openList.pop_back();
 		N->open = false;
@@ -165,6 +167,7 @@ bool (*goalTest)(string)) {
 vector<string> dfid(string init, vector<string> (*moveGen)(string),
 bool (*goalTest)(string)) {	
 	/* Search using Depth First Iterative Deepening(DFID) */
+
 	vector<string> result;			// stores the resulting path
 	list<SearchNode *> openList;	// keeps track of order of insertion
 	unordered_map<string, SearchNode *> nodes;	  // indexes and stores graph
@@ -224,4 +227,59 @@ bool (*goalTest)(string)) {
 	}
 	freeMem(nodes);
 	return result;		// Using an empty vector to indicate failure
+}
+
+vector<string> steepestAscent(string init, vector<string> (*moveGen)(string),
+bool (*goalTest)(string), long (*heuristic)(string)) {
+	/*
+	 * Steepest ascent hill-climbing: returns the best path found.
+	 * At each stage, select the next state with best heuristic and stop
+	 * if no better heuristic can be achieved.
+	 */
+	vector<string> result;			// stores the resulting path
+	unordered_map<string, SearchNode *> nodes;	  // indexes and stores graph
+	
+	/* generate node for initial state and index it */
+	SearchNode *N = makeNode(init);
+	nodes[init] = N;
+	long curr_h = heuristic(N->state);		// current heurisitc
+
+	 while(true) {
+		/* Check if current node is the goal state */
+		if(goalTest(N->state)) {
+			result = reconstruct(N, nodes);
+			freeMem(nodes);					// free space assigned to nodes
+			return result;
+		}
+		else {
+			/* Else, generate new moves and select the best one */
+			vector<string> newMoves = moveGen(N->state);
+			bool found = false;				// better state found?
+
+			for(unsigned i = 0; i<newMoves.size(); i++) {
+				string mv = newMoves[i];
+				long new_h = heuristic(mv);
+
+				if(new_h > curr_h) {
+					if(found) {
+						// forget previous 
+						nodes.erase(N->state);
+						delete N;
+					}
+					found = true;
+					SearchNode *pNode = makeNode(mv, N);
+					nodes[mv] = pNode;
+
+					curr_h = new_h;
+					N = pNode;
+				}
+			}
+			if(!found) {
+				// cannot climb further; return current path
+				result = reconstruct(N, nodes);
+				freeMem(nodes);
+				return result;
+			}
+		}
+	 }
 }

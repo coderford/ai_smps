@@ -11,11 +11,17 @@
 #include <iostream>
 #include <vector>
 #include "search.h"
+#define GOAL_STATE "12345678_"
 
 using namespace std;
 
+int abs(int x) {
+	return (x<0)?-x:x;
+}
+
 vector<string> moveGen(string state);
 bool goalTest(string state);
+long heuristic_manhattan(string state);
 void printState(string state);
 
 int main(int argc, char *argv[]) {
@@ -37,6 +43,9 @@ int main(int argc, char *argv[]) {
 			result = bfs(init_state, moveGen, goalTest);
 		else if(algo == "dfid")
 			result = dfid(init_state, moveGen, goalTest);
+		else if(algo == "steepest")
+			result = steepestAscent(init_state, moveGen, goalTest,
+				heuristic_manhattan);
 		else {
 			cout<<"ERROR: Unknown algorithm!\n";
 			return 1;
@@ -91,7 +100,7 @@ vector<string> moveGen(string state) {
 }
 
 bool goalTest(string state) {
-	if(state == "12345678_") return true;
+	if(state == GOAL_STATE) return true;
 	return false;
 }
 
@@ -103,4 +112,28 @@ void printState(string state) {
 		cout<<"\n";
 	}
 	cout<<"\n";
+}
+
+long heuristic_manhattan(string state) {
+	/*
+	 * Calculates heuristic as the sum of manhattan distances of tiles
+	 * from their positions in goal state
+	 */
+	string goal = GOAL_STATE;
+	long sum = 0;
+	int pos, goalpos;
+
+	for(int i = 1; i<9; i++) {
+		pos = state.find('0'+i);
+		goalpos = goal.find('0'+i);
+		
+		sum += abs(pos/3 - goalpos/3);
+		sum += abs(pos%3 - goalpos%3);
+	}
+	pos = state.find('_');
+	goalpos = goal.find('_');
+	sum += abs(pos/3 - goalpos/3);
+	sum += abs(pos%3 - goalpos%3);
+
+	return -sum;
 }

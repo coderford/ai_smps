@@ -20,4 +20,7 @@ bool (*goalTest)(string));
 vector<string> dfid(string init, vector<string> (*moveGen)(string), 
 bool (*goalTest)(string));
 
+vector<string> steepestAscent(string init, vector<string> (*moveGen)(string),
+bool (*goalTest)(string), long (*heuristic)(string));
+
 #endif
